@@ -88,21 +88,19 @@
 	    $date = date('d-M-y');
 	    		
 		$data = array(
-	        "us_id" =>$us_id,
+	        "us_id" =>$user_id,
 			"us_first_name" =>$us_first_name,
 			"us_last_name" =>$us_last_name,
 			"us_email" =>$us_email,
 			"us_phone" =>$us_phone,
-			"us_pass" =>$us_pass,
+			"us_pass" =>$user_passwd,
 			"us_active" =>$us_active,
 			"us_remarks" =>$us_remarks,
 			"us_country" =>$us_country,
 			"us_state" =>$us_state,
 			"us_city" =>$us_city,
 			"us_status" =>$us_status,
-			"us_type" =>$us_type,
-			"us_crt_dt" =>$us_crt_dt,
-			"us_upd_dt" =>$us_upd_dt
+			"us_type" =>$us_type
 	    );
 
 	    $this->db->insert('users',$data);
@@ -127,9 +125,16 @@
 	    }
 	}
 	
-	function loginAuthentication($user_id,$user_passwd,$token)
+	function signIn()
 	{
-	    $user_id = $user_id;//$this->input->get('user_id');
+	   $postdata = file_get_contents("php://input");
+		if (!(isset($postdata))) {
+			$result = array('status'=>'error', 'msg'=>'Please give the proper details', 'result'=>array('0'=>''));
+			echo json_encode($result);exit;
+		}
+		$request = json_decode($postdata);
+		$user_id = $request->user_id;
+		$user_passwd = $request->user_passwd;
 	    $password = md5($user_passwd);//md5($this->security->xss_clean($this->input->get('user_passwd')));
 	    $date = date('d-M-y');
 	    		
@@ -139,15 +144,94 @@
 	    $query = $this->db->query($sql);
 	    if($query->num_rows > 0)
 	    {
-	    	$result = $query->result_array();
 	    	$result['newToken'] = $this->getNewToken($result);
 	    	$result['flag'] = TRUE;
-			return $result;
+			$result['status'] = 'success';
+			$result['msg'] = 'Successfully Logged In';
+			$result['user_id'] = $user_id;
+			echo json_encode($result);exit;
 	    }
 	    else
 	    {
 	    	$result['flag'] = FALSE;
-			return $result;
+			$result['status'] = 'error';
+			$result['msg'] = 'Login Failed';
+			$result['user_id'] = $us_id;
+			echo json_encode($result);exit;
+	    }
+	}
+
+	//nominee
+	function askQuestion()
+	{
+		$result = $this->makeDecode();
+		$token = $result->token;
+		$user_id = $result->user_id;
+		
+	    		
+		$data = array(
+			"qtn_sys_id" => $qtn_sys_id,
+	       "qtn_to_display" => $qtn_to_display,
+			"qtn_category" => $qtn_category,
+			"qtn_status" => $qtn_status,
+			"qtn_active" => $qtn_active,
+			"qtn_start_date" => $qtn_start_date,
+			"qtn_end_date" => $qtn_end_date,
+			"qtn_report_type" => $qtn_report_type,
+			"qtn_report_desc" => $qtn_report_desc,
+			"qtn_crt_uid" => $qtn_crt_uid,
+			"qtn_crt_dt" => $qtn_crt_dt,
+			"qtn_upd_dt" => $qtn_upd_dt
+	    );
+
+	    $this->db->insert('questions',$data);
+	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+				
+	    if($insertFlag)
+	    {
+	    	$result = $query->result_array();
+			$result['status'] = 'success';
+			$result['msg'] = 'Successfully Question Created';
+			echo json_encode($result);exit;
+	    }
+	    else
+	    {
+	    	$result['status'] = 'error';
+			$result['msg'] = 'Question not created';
+			echo json_encode($result);exit;
+	    }
+	}
+
+	function addNomineeForQuestion()
+	{
+		$result = $this->makeDecode();
+		$token = $result->token;
+		$user_id = $result->user_id;
+		
+	    		
+		$data = array(
+			"nom_qtn_sys_id" => $nom_qtn_sys_id,
+			"nom_display_name" => $nom_display_name,
+			"nom_img" => $nom_img,
+			"nom_crt_dt" => $nom_crt_dt,
+			"nom_upd_dt" => $nom_upd_dt
+	    );
+
+	    $this->db->insert('questions',$data);
+	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+				
+	    if($insertFlag)
+	    {
+	    	$result = $query->result_array();
+			$result['status'] = 'success';
+			$result['msg'] = 'Successfully Question Created';
+			echo json_encode($result);exit;
+	    }
+	    else
+	    {
+	    	$result['status'] = 'error';
+			$result['msg'] = 'Question not created';
+			echo json_encode($result);exit;
 	    }
 	}
 

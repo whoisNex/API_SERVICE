@@ -93,9 +93,9 @@
 		$this->WINMod->signUp();
 	}
 
-	function signIn(){
+	function askQuestion(){
 		header('Content-Type: application/json');
-		$this->WINMod->signUp();
+		$this->WINMod->askQuestion();
 	}            
 
 	function LogOut()
