@@ -90,7 +90,7 @@
 
 	function signIn(){
 		header('Content-Type: application/json');
-		$this->WINMod->signUp();
+		$this->WINMod->signIn();
 	}
 
 	function askQuestion(){

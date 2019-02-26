@@ -17,7 +17,7 @@
 
 		return $request; // for time being
 		//
-		$sql = " SELECT TOKEN_LAST_ACTIVITY_TIME, TOKEN_EXPIRE_TIME, LOCALTIMESTAMP AS NOW FROM APPS_USER_TOKEN 
+		$sql = " SELECT TOKEN_LAST_ACTIVITY_TIME, TOKEN_EXPIRE_TIME, LOCALTIMESTAMP() AS NOW FROM APPS_USER_TOKEN 
 			WHERE 
 			TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
 			";
@@ -43,7 +43,7 @@
 				exit;
 			}
 
-			$sql = " UPDATE APPS_USER_TOKEN SET TOKEN_LAST_ACTIVITY_TIME = LOCALTIMESTAMP 
+			$sql = " UPDATE APPS_USER_TOKEN SET TOKEN_LAST_ACTIVITY_TIME = LOCALTIMESTAMP() 
 			WHERE 
 			TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
 			";
@@ -143,12 +143,10 @@
 		$user_passwd = $request->user_passwd;
 	    $password = md5($user_passwd);//md5($this->security->xss_clean($this->input->get('user_passwd')));
 	    $date = date('d-M-y');
-	    		
-		$sql="SELECT * FROM users 
-			WHERE LOWER(us_id)=LOWER('$user_id') AND us_pass='$password' AND  us_active='Y' ";
-				
+	    
+		$sql="SELECT * FROM users WHERE LOWER(us_id)=LOWER('$user_id') AND us_pass='$password' AND  us_active='Y' ";
 	    $query = $this->db->query($sql);
-	    if($query->num_rows > 0)
+	    if($query->num_rows() > 0)
 	    {
 	    	$result['newToken'] = $this->getNewToken($user_id);
 	    	$result['flag'] = TRUE;
@@ -176,8 +174,8 @@
 		
 	    		
 		$data = array(
-			"qtn_sys_id" => $qtn_sys_id,
-	       "qtn_to_display" => $qtn_to_display,
+			// "qtn_sys_id" => $qtn_sys_id,
+	       	"qtn_to_display" => $qtn_to_display,
 			"qtn_category" => $qtn_category,
 			"qtn_status" => $qtn_status,
 			"qtn_active" => $qtn_active,
@@ -193,7 +191,6 @@
 				
 	    if($insertFlag)
 	    {
-	    	$result = $query->result_array();
 			$result['status'] = 'success';
 			$result['msg'] = 'Successfully Question Created';
 			echo json_encode($result);exit;
@@ -250,8 +247,7 @@
 			"TOKEN_SYS_ID" => $tokenSysID,
 			"TOKEN_USER_ID" => $user_id,
 			"TOKEN_CODE" => $tokenCode,
-			"TOKEN_EXPIRE_TIME" => $this->tokenExpireTime,
-			"TOKEN_LAST_ACTIVITY_TIME" =>'LOCALTIMESTAMP'
+			"TOKEN_EXPIRE_TIME" => $this->tokenExpireTime
 	    );
 
 	    $this->db->insert('token',$data);
@@ -274,14 +270,14 @@
 		// delete all the record except past two days data
 
 		$result = $this->makeDecode();
-		$sql = "SELECT TOKEN_CODE FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP - $daysGap )";
+		$sql = "SELECT TOKEN_CODE FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
 		$sqlResult = $this->db->query($sql)->num_rows();
 		if($sqlResult == 0){
 			$result = array('status'=>'success', 'msg'=>'No Data Delete', 'result'=>array('0'=>''));
 			echo json_encode($result);
 			exit;
 		}
-		$sql = "DELETE  FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP - $daysGap )";
+		$sql = "DELETE  FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
 		$sqlResult = $this->db->query($sql);
 		$resultCheck = ($this->db->affected_rows() != 1) ? FALSE : TRUE;
 		if($resultCheck === FALSE){
@@ -636,7 +632,7 @@
 	    //if($dataCount == 0 || $TAH_NO_OF_LEVELS == 1){
 	    	// CASE : 1 : not given level time or only one level given
 	    	//TO_CHAR(UT_LOG_DATE,'DD-MM-YYYY HH:MI:SS AM')
-	    	$sql="SELECT UT_LOG_DATE, LOCALTIMESTAMP, UT_PROCESS, UT_SUBJECT, UT_TXN_CODE, UT_TXN_SYS_ID, UT_LINK, UT_SYS_ID, PRH_TOTAL_AMT_FC AS AMOUNT, REQUESTED_BY, PRH_CCY_CODE
+	    	$sql="SELECT UT_LOG_DATE, LOCALTIMESTAMP(), UT_PROCESS, UT_SUBJECT, UT_TXN_CODE, UT_TXN_SYS_ID, UT_LINK, UT_SYS_ID, PRH_TOTAL_AMT_FC AS AMOUNT, REQUESTED_BY, PRH_CCY_CODE
 					FROM APPS_USER_TODO, FINC_V_PAYMENT_REQ_HEAD
 					WHERE UT_COMP_CODE   = '$comp_code'
 					AND UT_USER_ID       = '$user_id'
