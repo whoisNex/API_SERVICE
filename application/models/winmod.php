@@ -15,6 +15,8 @@
 		$token = $request->token;
 		$user_id = $request->user_id;
 
+		return $request; // for time being
+		//
 		$sql = " SELECT TOKEN_LAST_ACTIVITY_TIME, TOKEN_EXPIRE_TIME, LOCALTIMESTAMP AS NOW FROM APPS_USER_TOKEN 
 			WHERE 
 			TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
@@ -82,25 +84,30 @@
 			echo json_encode($result);exit;
 		}
 		$request = json_decode($postdata);
-		$user_id = $request->user_id;
+		$us_id = $request->user_id;
 		$user_passwd = $request->user_passwd;
-	    $password = md5($user_passwd);//md5($this->security->xss_clean($this->input->get('user_passwd')));
+		$us_pass = md5($user_passwd);//md5($this->security->xss_clean($this->input->get('user_passwd')));
+		$us_email = $request->user_email;
+		$us_phone = $request->user_phone;
+		$us_first_name = $request->user_first_name;
+		$us_active = $request->user_active;
+	    
 	    $date = date('d-M-y');
 	    		
 		$data = array(
-	        "us_id" =>$user_id,
+	        "us_id" =>$us_id,
 			"us_first_name" =>$us_first_name,
 			"us_last_name" =>$us_last_name,
 			"us_email" =>$us_email,
 			"us_phone" =>$us_phone,
-			"us_pass" =>$user_passwd,
-			"us_active" =>$us_active,
+			"us_pass" =>$us_pass,
+			"us_active" =>'Y',
 			"us_remarks" =>$us_remarks,
 			"us_country" =>$us_country,
 			"us_state" =>$us_state,
 			"us_city" =>$us_city,
-			"us_status" =>$us_status,
-			"us_type" =>$us_type
+			"us_status" =>'PENDING',
+			"us_type" =>'SUBSCRIBER'
 	    );
 
 	    $this->db->insert('users',$data);
@@ -108,8 +115,7 @@
 				
 	    if($insertFlag)
 	    {
-	    	$result = $query->result_array();
-	    	$result['newToken'] = $this->getNewToken($result);
+	    	$result['newToken'] = $this->getNewToken($us_id);
 	    	$result['flag'] = TRUE;
 			$result['status'] = 'success';
 			$result['msg'] = 'Successfully Account Created';
@@ -144,7 +150,7 @@
 	    $query = $this->db->query($sql);
 	    if($query->num_rows > 0)
 	    {
-	    	$result['newToken'] = $this->getNewToken($result);
+	    	$result['newToken'] = $this->getNewToken($user_id);
 	    	$result['flag'] = TRUE;
 			$result['status'] = 'success';
 			$result['msg'] = 'Successfully Logged In';
@@ -164,9 +170,9 @@
 	//nominee
 	function askQuestion()
 	{
-		$result = $this->makeDecode();
+		$request = $this->makeDecode();
 		$token = $result->token;
-		$user_id = $result->user_id;
+		$user_id = $request->user_id;
 		
 	    		
 		$data = array(
@@ -179,9 +185,7 @@
 			"qtn_end_date" => $qtn_end_date,
 			"qtn_report_type" => $qtn_report_type,
 			"qtn_report_desc" => $qtn_report_desc,
-			"qtn_crt_uid" => $qtn_crt_uid,
-			"qtn_crt_dt" => $qtn_crt_dt,
-			"qtn_upd_dt" => $qtn_upd_dt
+			"qtn_crt_uid" => $qtn_crt_uid
 	    );
 
 	    $this->db->insert('questions',$data);
@@ -235,21 +239,34 @@
 	    }
 	}
 
-	function getNewToken(){
+	function getNewToken($user_id){
 		
 		$tokenSysID = rand( 99, 99999);
 		$timeNow = date('d-M-Y h:m:s');
 		$tokenCode   = md5(rand( 99, 99999).$tokenSysID.$timeNow);
 		$this->tokenCode = $tokenCode;
-		$sql ="INSERT INTO APPS_USER_TOKEN (TOKEN_SYS_ID, TOKEN_USER_ID, TOKEN_CODE, TOKEN_EXPIRE_TIME, TOKEN_LAST_ACTIVITY_TIME) VALUES ($tokenSysID,'$user_id', '$tokenCode', '$this->tokenExpireTime', LOCALTIMESTAMP) ";
-		$sqlResult = $this->db->query($sql);
-		$resultCheck = ($this->db->affected_rows() != 1) ? FALSE : TRUE;
-		if($resultCheck === FALSE){
-			
-			$result = array('status'=>'error', 'msg'=>'Error : 5003 - Please contact support team', 'result'=>array('0'=>''));
+
+		$data = array(
+			"TOKEN_SYS_ID" => $tokenSysID,
+			"TOKEN_USER_ID" => $user_id,
+			"TOKEN_CODE" => $tokenCode,
+			"TOKEN_EXPIRE_TIME" => $this->tokenExpireTime,
+			"TOKEN_LAST_ACTIVITY_TIME" =>'LOCALTIMESTAMP'
+	    );
+
+	    $this->db->insert('token',$data);
+	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+				
+	    if($insertFlag)
+	    {
+			return $tokenCode;
+	    }
+	    else
+	    {
+	    	$result['status'] = 'error';
+			$result['msg'] = 'Error : 5003 - Please contact support team';
 			echo json_encode($result);exit;
-		}
-		return $tokenCode;
+	    }
 		
 	}
 

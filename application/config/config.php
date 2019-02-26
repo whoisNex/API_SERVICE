@@ -27,7 +27,7 @@ $domain = $_SERVER['SERVER_NAME'];
 switch ($domain)
 {
     case 'localhost':
-        $config['base_url']	= 'http://localhost/results/';
+        $config['base_url']	= 'http://localhost/API_SERVICE/';
         break;
     default:
         $config['base_url'] 	= "http://" . $_SERVER['SERVER_NAME'] . '/';

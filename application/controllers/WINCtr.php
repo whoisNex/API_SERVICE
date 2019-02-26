@@ -96,6 +96,11 @@
 	function askQuestion(){
 		header('Content-Type: application/json');
 		$this->WINMod->askQuestion();
+	} 
+
+	function addNomineeForQuestion(){
+		header('Content-Type: application/json');
+		$this->WINMod->askQuestion();
 	}            
 
 	function LogOut()
