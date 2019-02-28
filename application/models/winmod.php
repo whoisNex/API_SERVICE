@@ -17,7 +17,7 @@
 
 		return $request; // for time being
 		//
-		$sql = " SELECT TOKEN_LAST_ACTIVITY_TIME, TOKEN_EXPIRE_TIME, LOCALTIMESTAMP() AS NOW FROM APPS_USER_TOKEN 
+		$sql = " SELECT TOKEN_LAST_ACTIVITY_TIME, TOKEN_EXPIRE_TIME, LOCALTIMESTAMP() AS NOW FROM TOKEN 
 			WHERE 
 			TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
 			";
@@ -29,7 +29,7 @@
 			$now = strtotime($dataToken[0]['NOW']);
 			// CHECKING CURRENT TIME AND LAST ACTIVITY TIME WITH SESSION EXPIRIRATION TIME
 			if($now > floatval($lastActivity + $expireTime)){
-				$sql = " DELETE FROM APPS_USER_TOKEN WHERE 
+				$sql = " DELETE FROM TOKEN WHERE 
 					TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
 					";
 					$sqlResult = $this->db->query($sql);
@@ -43,7 +43,7 @@
 				exit;
 			}
 
-			$sql = " UPDATE APPS_USER_TOKEN SET TOKEN_LAST_ACTIVITY_TIME = LOCALTIMESTAMP() 
+			$sql = " UPDATE TOKEN SET TOKEN_LAST_ACTIVITY_TIME = LOCALTIMESTAMP() 
 			WHERE 
 			TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' 
 			";
@@ -171,19 +171,35 @@
 		$request = $this->makeDecode();
 		$token = $result->token;
 		$user_id = $request->user_id;
+		$start_date = $request->start_date;
+		$end_date = $request->end_date;
+		$category = $request->category;
+		$question = $request->question;
+
+		// $nominee = $request->nominee;
+		
+	 //    foreach ($nominee as $key => $value) {
+		// 	$data = array(
+		// 		"nom_qtn_sys_id" => $id,
+		// 		"nom_display_name" => $value->display_name,
+		// 		"nom_current_position" => $value->position,
+		// 		"nom_img" => '',
+		// 		"nom_crt_uid" => $user_id
+		//     );
+		//     print_r($data);
+		// }
+		// exit;
 		
 	    		
 		$data = array(
 			// "qtn_sys_id" => $qtn_sys_id,
-	       	"qtn_to_display" => $qtn_to_display,
-			"qtn_category" => $qtn_category,
-			"qtn_status" => $qtn_status,
-			"qtn_active" => $qtn_active,
-			"qtn_start_date" => $qtn_start_date,
-			"qtn_end_date" => $qtn_end_date,
-			"qtn_report_type" => $qtn_report_type,
-			"qtn_report_desc" => $qtn_report_desc,
-			"qtn_crt_uid" => $qtn_crt_uid
+	       	"qtn_to_display" => $question,
+			"qtn_category" => $category,
+			"qtn_status" => 'PENDING',
+			"qtn_active" => 'Y',
+			"qtn_start_date" => $start_date,
+			"qtn_end_date" => $end_date,
+			"qtn_crt_uid" => $user_id
 	    );
 
 	    $this->db->insert('questions',$data);
@@ -191,6 +207,10 @@
 				
 	    if($insertFlag)
 	    {
+	    	$_id = $this->db->insert_id();
+
+   			//$result['id'] = $_id;
+   			$this->addNomineeForQuestion($_id);
 			$result['status'] = 'success';
 			$result['msg'] = 'Successfully Question Created';
 			echo json_encode($result);exit;
@@ -203,37 +223,210 @@
 	    }
 	}
 
-	function addNomineeForQuestion()
+	function addNomineeForQuestion($id='')
 	{
-		$result = $this->makeDecode();
-		$token = $result->token;
-		$user_id = $result->user_id;
+		$request = $this->makeDecode();
+		$token = $request->token;
+		$user_id = $request->user_id;
+		$nominee = $request->nominee;
 		
-	    		
+	    foreach ($nominee as $key => $value) {
+			$data = array(
+				"nom_qtn_sys_id" => $id,
+				"nom_display_name" => $value->display_name,
+				"nom_current_position" => $value->position,
+				"nom_img" => '',
+				"nom_crt_uid" => $user_id
+		    );
+
+		    $this->db->insert('nominee',$data);
+		    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+					
+		    if($insertFlag)
+		    {
+				$result['status'] = 'success';
+				$result['msg'] = 'Successfully nominee Created';
+				
+		    }
+		    else
+		    {
+		    	$result['status'] = 'error';
+				$result['msg'] = 'Question not created';
+				echo json_encode($result);exit;
+		    }
+		}
+		return true;
+	}
+
+	function trustableUser()
+	{
+		$postdata = file_get_contents("php://input");
+		if (!(isset($postdata))) {
+			$result = array('status'=>'error', 'msg'=>'Please give the proper details', 'result'=>array('0'=>''));
+			echo json_encode($result);exit;
+		}
+		$request = json_decode($postdata);
+		
+		$ph = $request->ph;
+		$country = $request->country;
+		$state = $request->state;
+		$city = $request->city;
+		$password = md5('*****');
 		$data = array(
-			"nom_qtn_sys_id" => $nom_qtn_sys_id,
-			"nom_display_name" => $nom_display_name,
-			"nom_img" => $nom_img,
-			"nom_crt_dt" => $nom_crt_dt,
-			"nom_upd_dt" => $nom_upd_dt
+	        "us_id" =>$ph,
+			"us_phone" =>$ph,
+			"us_pass" =>$password,
+			"us_active" =>'Y',
+			"us_country" =>$country,
+			"us_state" =>$state,
+			"us_city" =>$city,
+			"us_status" =>'PENDING',
+			"us_type" =>'VOTER'
 	    );
 
-	    $this->db->insert('questions',$data);
+	    $ResultInsert = $this->db->insert('users',$data);
+	    //print_r($ResultInsert);exit;
 	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
 				
 	    if($insertFlag)
 	    {
-	    	$result = $query->result_array();
+	    	$result['token'] = $this->getNewTokenForVote($ph,'VOTE');
+	    	$result['flag'] = TRUE;
 			$result['status'] = 'success';
-			$result['msg'] = 'Successfully Question Created';
+			$result['msg'] = 'Successfully OTP Generated';
+			$result['phone'] = $ph;
 			echo json_encode($result);exit;
 	    }
 	    else
 	    {
+	  //   	$sql = " SELECT TOKEN_OTP_LAST_ACTIVITY_TIME, TOKEN_OTP_EXPIRE_TIME, LOCALTIMESTAMP() AS NOW FROM TOKEN_FOR_OTP
+			// WHERE TOKEN_OTP_USER_ID = '$user_id' AND TOKEN_OTP_CODE = '$token' AND TOKEN_OTP_SYS_ID = '$otp' ";
+			// $sqlResult = $this->db->query($sql);
+			// if($sqlResult->num_rows() == 1 ){
+			// }
+	    	$result['flag'] = FALSE;
 	    	$result['status'] = 'error';
-			$result['msg'] = 'Question not created';
+			$result['msg'] = 'Something went wrong : Error No - 6000';
 			echo json_encode($result);exit;
 	    }
+	}
+
+	function voiceOfPeople()
+	{
+		$postdata = file_get_contents("php://input");
+		if (!(isset($postdata))) {
+			$result = array('status'=>'error', 'msg'=>'Please give the proper details', 'result'=>array('0'=>''));
+			echo json_encode($result);exit;
+		}
+		$request = json_decode($postdata);
+		
+		$token = $request->token;
+		$client_otp = $request->client_otp;
+		$otp = floatval($client_otp);
+		$phone = $request->phone;
+		$qtn_id = $request->qtn_id;
+		$nom_id = $request->nom_id;
+		//$us_id = $request->us_id;
+		$done_through = $request->done_through;
+		
+
+
+		$sql = "SELECT TOKEN_OTP_LAST_ACTIVITY_TIME, TOKEN_OTP_EXPIRE_TIME, LOCALTIMESTAMP() AS NOW FROM TOKEN_FOR_OTP
+			WHERE TOKEN_OTP_USER_ID = '$phone' AND TOKEN_OTP_CODE = '$token' AND TOKEN_OTP_SYS_ID = '$otp' ";
+		$sqlResult = $this->db->query($sql);
+		// CHECKING AT FIRST OTP EXIST IF SO THEN
+		if($sqlResult->num_rows() == 1 ){
+			$sqlResultArray = $sqlResult->result_array();
+			$lastActivity = strtotime($sqlResultArray[0]['TOKEN_OTP_LAST_ACTIVITY_TIME']);
+			$expireTime = floatval($sqlResultArray[0]['TOKEN_OTP_EXPIRE_TIME']);
+			$now = strtotime($sqlResultArray[0]['NOW']);
+			// CHECKING CURRENT TIME AND LAST ACTIVITY TIME WITH SESSION EXPIRIRATION TIME
+			if($now > floatval($lastActivity + $expireTime)){
+				// IF TIME EXCEEDS THEN DELETE OTP AND SEND MSG TO USER
+				$sql = "DELETE FROM TOKEN_FOR_OTP WHERE TOKEN_OTP_USER_ID = '$phone' AND TOKEN_OTP_CODE = '$token' AND TOKEN_OTP_SYS_ID = '$otp' ";
+				$sqlResult = $this->db->query($sql);
+				$result = array('status'=>'error', 'msg'=>'OTP_EXPIRED', 'result'=>array('0'=>''));
+				echo json_encode($result);
+				exit;
+			}
+
+			$sql = " SELECT US_SYS_ID FROM USERS WHERE US_PHONE = '$phone'  AND US_ACTIVE = 'Y' ";
+			$sqlResult = $this->db->query($sql);
+			$sqlResultArray = $sqlResult->result_array();
+			$us_id = $sqlResultArray[0]['US_SYS_ID'];
+			$data = array(
+				"vot_qtn_sys_id" => $qtn_id,
+				"vot_nom_sys_id" => $nom_id,
+				"vot_us_sys_id" => $us_id,
+				"vot_done_otp" => $otp
+		    );
+
+		    $this->db->insert('voting',$data);
+		    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+					
+		    if($insertFlag)
+		    {
+		    	// NEED TO DELETE THIS BY TRIGGER AFTER VOTING
+				$sql = "DELETE FROM TOKEN_FOR_OTP WHERE TOKEN_OTP_USER_ID = '$phone' AND TOKEN_OTP_CODE = '$token' AND TOKEN_OTP_SYS_ID = '$otp' ";
+				$sqlResult = $this->db->query($sql);
+				$Flag =  ($this->db->affected_rows() != 1) ? false : true;
+				//if($Flag){
+					$result['status'] = 'success';
+					$result['msg'] = 'Successfully Voting Done';
+					echo json_encode($result);exit;	
+				// }else{
+				// 	$result['status'] = 'error';
+				// 	$result['msg'] = 'Error while voting : Error - 6450';
+				// 	echo json_encode($result);exit;
+				// }
+				
+		    }
+		    else
+		    {
+		    	$result['status'] = 'error';
+				$result['msg'] = 'Error while voting : Error - 6455';
+				echo json_encode($result);exit;
+		    }
+		}else{
+			$result['status'] = 'error';
+			$result['msg'] = 'Voting Failed : Error - 6555';
+			echo json_encode($result);exit;
+		}
+	}
+
+	function getNewTokenForVote($user_id,$when=''){
+		
+		$tokenSysID = rand( 10000, 99999);//otp
+		$timeNow = date('d-M-Y h:m:s');
+		$tokenCode   = md5(rand( 99, 99999).$tokenSysID.$timeNow.$user_id);
+		//$this->tokenCode = $tokenCode;
+		$expireTime = $this->tokenExpireTime;
+		if( $when != ''){
+			$expireTime = 180;
+		}
+		$data = array(
+			"TOKEN_OTP_SYS_ID" => $tokenSysID,
+			"TOKEN_OTP_USER_ID" => $user_id,
+			"TOKEN_OTP_CODE" => $tokenCode,
+			"TOKEN_OTP_EXPIRE_TIME" => $expireTime
+	    );
+
+	    $this->db->insert('token_for_otp',$data);
+	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+				
+	    if($insertFlag)
+	    {
+	    	//functionality to send otp here will come
+	    	// need to pass tokenSysID as otp to the user
+			return $tokenCode;
+	    }
+	    else
+	    {
+	    	$result['status'] = 'error';
+			$result['msg'] = 'Error : 6003 - Please contact support team';
+			echo json_encode($result);exit;
+	    }
+		
 	}
 
 	function getNewToken($user_id){
@@ -242,12 +435,12 @@
 		$timeNow = date('d-M-Y h:m:s');
 		$tokenCode   = md5(rand( 99, 99999).$tokenSysID.$timeNow);
 		$this->tokenCode = $tokenCode;
-
+		$expireTime = $this->tokenExpireTime;
 		$data = array(
 			"TOKEN_SYS_ID" => $tokenSysID,
 			"TOKEN_USER_ID" => $user_id,
 			"TOKEN_CODE" => $tokenCode,
-			"TOKEN_EXPIRE_TIME" => $this->tokenExpireTime
+			"TOKEN_EXPIRE_TIME" => $expireTime
 	    );
 
 	    $this->db->insert('token',$data);
@@ -270,14 +463,14 @@
 		// delete all the record except past two days data
 
 		$result = $this->makeDecode();
-		$sql = "SELECT TOKEN_CODE FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
+		$sql = "SELECT TOKEN_CODE FROM TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
 		$sqlResult = $this->db->query($sql)->num_rows();
 		if($sqlResult == 0){
 			$result = array('status'=>'success', 'msg'=>'No Data Delete', 'result'=>array('0'=>''));
 			echo json_encode($result);
 			exit;
 		}
-		$sql = "DELETE  FROM APPS_USER_TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
+		$sql = "DELETE  FROM TOKEN WHERE TOKEN_LAST_ACTIVITY_TIME < (LOCALTIMESTAMP() - $daysGap )";
 		$sqlResult = $this->db->query($sql);
 		$resultCheck = ($this->db->affected_rows() != 1) ? FALSE : TRUE;
 		if($resultCheck === FALSE){
@@ -393,7 +586,7 @@
 		$token = $result->token;
 		$user_id = $result->user_id;
 
-		$sql = " DELETE FROM APPS_USER_TOKEN WHERE TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' ";
+		$sql = " DELETE FROM TOKEN WHERE TOKEN_USER_ID = '$user_id' AND TOKEN_CODE = '$token' ";
 			$sqlResult = $this->db->query($sql);
 			$resultCheck = ($this->db->affected_rows() != 1) ? FALSE : TRUE;
 			if($resultCheck === FALSE){

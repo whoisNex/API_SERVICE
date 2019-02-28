@@ -101,6 +101,16 @@
 	function addNomineeForQuestion(){
 		header('Content-Type: application/json');
 		$this->WINMod->askQuestion();
+	}
+
+	function trustableUser(){
+		header('Content-Type: application/json');
+		$this->WINMod->trustableUser();
+	}
+
+	function voiceOfPeople(){
+		header('Content-Type: application/json');
+		$this->WINMod->voiceOfPeople();
 	}            
 
 	function LogOut()
