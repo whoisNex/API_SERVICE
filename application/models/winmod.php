@@ -268,26 +268,35 @@
 		$request = json_decode($postdata);
 		
 		$ph = $request->ph;
-		$country = $request->country;
-		$state = $request->state;
-		$city = $request->city;
-		$password = md5('*****');
-		$data = array(
-	        "us_id" =>$ph,
-			"us_phone" =>$ph,
-			"us_pass" =>$password,
-			"us_active" =>'Y',
-			"us_country" =>$country,
-			"us_state" =>$state,
-			"us_city" =>$city,
-			"us_status" =>'PENDING',
-			"us_type" =>'VOTER'
-	    );
 
-	    $ResultInsert = $this->db->insert('users',$data);
-	    //print_r($ResultInsert);exit;
-	    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
-				
+
+		$sql = " SELECT US_SYS_ID FROM USERS WHERE US_PHONE = '$ph'";
+		$sqlResult = $this->db->query($sql);
+		$sqlResultArray = $sqlResult->result_array();
+		$us_id = $sqlResultArray[0]['US_SYS_ID'];
+		if($us_id == ""){
+			$country = $request->country;
+			$state = $request->state;
+			$city = $request->city;
+			$password = md5('*****');
+			$data = array(
+		        "us_id" =>$ph,
+				"us_phone" =>$ph,
+				"us_pass" =>$password,
+				"us_active" =>'Y',
+				"us_country" =>$country,
+				"us_state" =>$state,
+				"us_city" =>$city,
+				"us_status" =>'PENDING',
+				"us_type" =>'VOTER'
+		    );
+
+		    $ResultInsert = $this->db->insert('users',$data);
+		    //print_r($ResultInsert);exit;
+		    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+		}else{
+			$insertFlag = true;
+		}
 	    if($insertFlag)
 	    {
 	    	$result['token'] = $this->getNewTokenForVote($ph,'VOTE');
@@ -319,11 +328,12 @@
 			echo json_encode($result);exit;
 		}
 		$request = json_decode($postdata);
-		
+		//$val1 = $this->db->escape($val1);
 		$token = $request->token;
 		$client_otp = $request->client_otp;
 		$otp = floatval($client_otp);
 		$phone = $request->phone;
+		$ip = $request->ip;
 		$qtn_id = $request->qtn_id;
 		$nom_id = $request->nom_id;
 		//$us_id = $request->us_id;
@@ -388,9 +398,49 @@
 				echo json_encode($result);exit;
 		    }
 		}else{
-			$result['status'] = 'error';
-			$result['msg'] = 'Voting Failed : Error - 6555';
-			echo json_encode($result);exit;
+			// update the log for wrong OTP entering by user
+			// to check how many time user given wrong otp then need to block
+			// checking by means of ph no and another with ip of public domain.
+			
+			$data = array(
+				"log_otp_phone" => $phone,
+				"log_otp_ip" => 'NA-RIGHT_NOW',
+				"log_otp_wrong" => $otp
+		    );
+		    $this->db->insert('log_otp',$data);
+		    $insertFlag =  ($this->db->affected_rows() != 1) ? false : true;
+		    if(!($insertFlag)){
+		    	$result['status'] = 'error';
+				$result['msg'] = 'Voting Failed : Error - 6555';
+				echo json_encode($result);exit;
+		    }
+
+		    $sql = " SELECT LOG_OTP_SYS_ID FROM LOG_OTP WHERE  ( LOG_OTP_PHONE = '$phone'  OR LOG_OTP_IP = '$ip' ) AND LOG_OTP_ACTIVE_YN = 'Y' ";
+			$sqlResult = $this->db->query($sql);
+			$countOf = $sqlResult->num_rows();
+			if($countOf == 0){
+				$result['attempt'] = 1;
+				$result['block'] = 'no';
+				$result['status'] = 'error';
+				$result['msg'] = 'OTP is not Valid';
+				echo json_encode($result);exit;
+			}else if($countOf == 1){
+				$result['attempt'] = 2;
+				$result['block'] = 'no';
+				$result['status'] = 'error';
+				$result['msg'] = 'OTP is not Valid';
+			}else if($countOf == 2){
+				$result['attempt'] = 3;
+				$result['block'] = 'yes';
+				$result['status'] = 'error';
+				$result['msg'] = 'OTP is not Valid';
+			}else{
+				$result['status'] = 'error';
+				$result['msg'] = 'Voting Failed : Error - 6555';
+				echo json_encode($result);exit;	
+			}
+
+			
 		}
 	}
 
